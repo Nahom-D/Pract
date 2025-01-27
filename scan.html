@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Access and Capture Photo</title>
+    <style>
+        video {
+            width: 100%;
+            height: auto;
+            border: 2px solid #000;
+        }
+        canvas {
+            display: none;
+        }
+        img {
+            width: 100%;
+            height: auto;
+            border: 2px solid #000;
+            margin-top: 20px;
+        }
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .modal-content button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        /* Instructions Section */
+        .instructions {
+            text-align: left;
+            margin-top: 20px;
+        }
+        .instructions ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .instructions li {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h2>Camera Access and Capture Photo</h2>
+    
+    <!-- Video Feed -->
+    <video id="videoElement" autoplay></video>
+    
+    <!-- Capture Button -->
+    <button id="captureButton">Capture Photo</button>
+    
+    <!-- Canvas to Draw the Captured Image -->
+    <canvas id="canvas"></canvas>
+    
+    <!-- Display Captured Image -->
+    <img id="capturedImage" alt="Captured Image">
+
+    <!-- Modal for Showing Camera Access Status -->
+    <div id="statusModal" class="modal">
+        <div class="modal-content">
+            <p id="statusMessage"></p>
+            <div id="instructionSection" class="instructions" style="display:none;">
+                <p>If you denied camera access, follow these steps:</p>
+                <ul>
+                    <li>1. Make sure you are using a modern browser like Chrome or Firefox.</li>
+                    <li>2. Look for a camera permission prompt in the browser's address bar.</li>
+                    <li>3. Click the camera icon and select "Allow" for camera access.</li>
+                    <li>4. If no prompt appears, you may need to enable camera permissions in your browser's settings.</li>
+                    <li>5. For mobile devices, check your phone's privacy settings to allow camera access for this site.</li>
+                </ul>
+            </div>
+            <button onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const statusModal = document.getElementById('statusModal');
+        const statusMessage = document.getElementById('statusMessage');
+        const instructionSection = document.getElementById('instructionSection');
+
+        // Check if the browser supports getUserMedia
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            // Request camera access
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    // Show live camera feed on the video element
+                    const video = document.getElementById('videoElement');
+                    video.srcObject = stream;
+
+                    // Show success message
+                    statusMessage.textContent = "Camera access granted! You can now take a photo.";
+                    statusModal.style.display = 'flex';
+                })
+                .catch(function(err) {
+                    console.log("Error: " + err);
+
+                    // Show error message and instructions if camera access is denied
+                    statusMessage.textContent = "Camera access denied. Please allow access.";
+                    instructionSection.style.display = 'block'; // Show instructions
+                    statusModal.style.display = 'flex';
+                });
+        } else {
+            alert("Your browser does not support camera access.");
+        }
+
+        // Capture photo functionality
+        document.getElementById('captureButton').addEventListener('click', function() {
+            const video = document.getElementById('videoElement');
+            const canvas = document.getElementById('canvas');
+            const capturedImage = document.getElementById('capturedImage');
+
+            // Set canvas size to match the video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            // Draw the current frame of the video onto the canvas
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert the canvas to an image and display it
+            const imageUrl = canvas.toDataURL('image/png');
+            capturedImage.src = imageUrl;
+            capturedImage.style.display = 'block'; // Show the captured image
+        });
+
+        // Close the modal
+        function closeModal() {
+            statusModal.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
