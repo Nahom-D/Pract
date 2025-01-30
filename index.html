@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan and Decode QR</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #2196f3, #ff5722);
+            color: #333;
+            text-align: center;
+        }
+
+        header {
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            font-size: 26px;
+            font-weight: bold;
+        }
+
+        main {
+            padding: 20px;
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        #video {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 10px;
+            border: 2px solid #4caf50;
+            display: none;
+        }
+
+        #scanButton {
+            display: inline-block;
+            padding: 12px 20px;
+            background-color: #4caf50;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            border: none;
+        }
+
+        #student-profile {
+            margin-top: 30px;
+            display: none;
+            text-align: left;
+        }
+
+        #student-profile h3 {
+            color: #4caf50;
+        }
+
+        #errorMessage {
+            color: red;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        Scan QR & Show Profile
+    </header>
+    <main>
+        <video id="video" autoplay playsinline></video>
+        <button id="scanButton">Start Scanning</button>
+
+        <div id="student-profile">
+            <h3>Student Profile</h3>
+            <p><strong>Full Name:</strong> <span id="fullName"></span></p>
+            <p><strong>Phone Number:</strong> <span id="phoneNumber"></span></p>
+            <p><strong>Grade:</strong> <span id="grade"></span></p>
+            <p><strong>Section:</strong> <span id="section"></span></p>
+            <p><strong>Roll Number:</strong> <span id="rollNumber"></span></p>
+        </div>
+
+        <p id="errorMessage"></p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr/dist/jsQR.min.js"></script>
+    <script>
+        const video = document.getElementById('video');
+        const scanButton = document.getElementById('scanButton');
+        const studentProfile = document.getElementById('student-profile');
+        const errorMessage = document.getElementById('errorMessage');
+        const fullName = document.getElementById('fullName');
+        const phoneNumber = document.getElementById('phoneNumber');
+        const grade = document.getElementById('grade');
+        const section = document.getElementById('section');
+        const rollNumber = document.getElementById('rollNumber');
+
+        let scanning = false;
+        let stream = null;
+
+        scanButton.addEventListener('click', async () => {
+            if (!scanning) {
+                requestCameraPermission();
+            } else {
+                stopScanning();
+            }
+        });
+
+        async function requestCameraPermission() {
+            try {
+                const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+
+                if (permissionStatus.state === 'denied') {
+                    showError("Camera permission denied. Please enable it in your browser settings.");
+                    return;
+                }
+
+                startScanning();
+            } catch (error) {
+                showError("Camera permission request failed. Please allow access manually.");
+            }
+        }
+
+        async function startScanning() {
+            scanning = true;
+            scanButton.textContent = "Stop Scanning";
+            errorMessage.textContent = "";
+            video.style.display = "block";
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                scanQRCode();
+            } catch (error) {
+                showError("Failed to access camera. Please allow camera permission.");
+                scanning = false;
+                scanButton.textContent = "Start Scanning";
+            }
+        }
+
+        function stopScanning() {
+            scanning = false;
+            scanButton.textContent = "Start Scanning";
+            video.style.display = "none";
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+        }
+
+        function scanQRCode() {
+            if (!scanning) return;
+
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+
+            function captureFrame() {
+                if (!scanning) return;
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+                if (code) {
+                    stopScanning();
+                    decodeData(code.data);
+                } else {
+                    requestAnimationFrame(captureFrame);
+                }
+            }
+
+            requestAnimationFrame(captureFrame);
+        }
+
+        function decodeData(data) {
+            try {
+                const decodedData = decodeURIComponent(escape(atob(data.split('').reverse().join(''))));
+                const [name, phone, gradeValue, sectionValue, roll] = decodedData.split('|');
+
+                fullName.textContent = name;
+                phoneNumber.textContent = phone;
+                grade.textContent = gradeValue;
+                section.textContent = sectionValue || 'N/A';
+                rollNumber.textContent = roll;
+
+                studentProfile.style.display = 'block';
+            } catch (error) {
+                showError("Invalid QR code. Please scan a valid one.");
+            }
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            stopScanning();
+        }
+    </script>
+</body>
+</html>
